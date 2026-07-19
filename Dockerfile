@@ -8,7 +8,8 @@ FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 RUN apk add --no-cache fontconfig \
     && mkdir -p /rootfs \
     # busybox first: package post-install scripts (gtk's among them) run
-    # chrooted in /rootfs and need /bin/sh to exist there already.
+    # chrooted in /rootfs and need /bin/sh there. Removed again below —
+    # the runtime ships with no shell.
     && apk add --root /rootfs --initdb --no-cache \
         --keys-dir /etc/apk/keys --repositories-file /etc/apk/repositories \
         busybox \
@@ -27,14 +28,15 @@ RUN apk add --no-cache fontconfig \
     # apk triggers (fc-cache) can't chroot into the shell-less rootfs,
     # so build the font cache from outside instead.
     && fc-cache --sysroot /rootfs -f \
+    && apk del --root /rootfs --no-cache busybox \
     && mkdir -p /rootfs/tmp /rootfs/in /rootfs/out \
     && chmod 1777 /rootfs/tmp
 
 COPY convert.py /rootfs/usr/local/bin/convert.py
 
-# Stage 2: Chainguard distroless runtime — no package manager (apk-tools is
-# not in the closure; busybox is included only because LibreOffice's soffice
-# launcher is a /bin/sh script).
+# Stage 2: Chainguard distroless runtime — no package manager, no shell.
+# convert.py execs soffice.bin directly since the soffice launcher is a
+# /bin/sh script.
 FROM cgr.dev/chainguard/glibc-dynamic:latest
 COPY --from=builder /rootfs /
 
