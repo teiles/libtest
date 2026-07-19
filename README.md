@@ -1,7 +1,9 @@
 # pptx2png
 
 Render each slide of a PPTX as a PNG using LibreOffice headless in a
-Chainguard Wolfi container.
+Chainguard container. Two-stage build: a wolfi-base builder resolves the
+package closure with apk; the runtime image (glibc-dynamic) ships without
+a package manager.
 
 Pipeline: `soffice --headless` converts the deck to PDF (LibreOffice's direct
 PNG export only renders the first slide), then poppler's `pdftoppm`
@@ -30,5 +32,5 @@ a missing font is the first suspect:
 docker run --rm --entrypoint fc-match pptx2png "Calibri"
 ```
 
-Add more fonts by appending Wolfi `font-*` packages to the `apk add` list
-in the Dockerfile.
+Add more fonts by appending Wolfi `font-*` packages to the builder stage's
+`apk add --root` list in the Dockerfile.
