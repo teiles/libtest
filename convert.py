@@ -35,8 +35,11 @@ def main() -> int:
         ]
         result = subprocess.run(cmd, stdout=subprocess.DEVNULL)
         if result.returncode == 81:
-            # soffice.bin exits 81 after first-run profile init, expecting
-            # a relaunch (normally done by the soffice shell wrapper).
+            # 81 is EXITHELPER_NORMAL_RESTART, not an error: soffice.bin
+            # exits after first-run profile init and expects a relaunch
+            # (normally done by oosplash, which the shell-less image
+            # bypasses). Fresh profile per run means this happens every
+            # run; the relaunch does the actual conversion.
             result = subprocess.run(cmd, stdout=subprocess.DEVNULL)
         if result.returncode != 0:
             print(f"error: soffice exited {result.returncode}", file=sys.stderr)

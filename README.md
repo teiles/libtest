@@ -48,10 +48,14 @@ repo, listed for the next change):
   builder via `fc-cache --sysroot /rootfs`. New font packages get
   picked up by that same line.
 - **`soffice` is a shell script**: the runtime has no shell, so
-  `convert.py` execs `soffice.bin` directly.
-- **Exit code 81**: soffice.bin exits 81 after first-run profile init,
-  expecting a relaunch (the wrapper script normally hides this);
-  `convert.py` retries once.
+  `convert.py` execs `soffice.bin` directly. That bypasses the normal
+  launch chain — `soffice` (sh) → `oosplash` (ELF) → `soffice.bin`.
+- **Exit code 81**: `EXITHELPER_NORMAL_RESTART` — benign. soffice.bin
+  exits 81 after initializing its user profile and expects a relaunch,
+  which oosplash normally performs. Because each run gets a fresh
+  throwaway `UserInstallation` profile (what makes concurrent runs
+  safe), this happens on *every* run here, not just the first;
+  `convert.py` relaunches once and only the second exit code counts.
 - **No shell for anything else either**: runtime work must be direct
   binary execs — no `shell=True`, no shell-script entrypoints, and
   `docker exec` debugging won't work. Debug in the builder stage
