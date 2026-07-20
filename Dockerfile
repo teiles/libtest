@@ -28,6 +28,27 @@ RUN apk add --no-cache fontconfig \
     # apk triggers (fc-cache) can't chroot into the shell-less rootfs,
     # so build the font cache from outside instead.
     && fc-cache --sysroot /rootfs -f \
+    # Pre-warm the LibreOffice profile. soffice.bin's first launch runs a
+    # one-time bootstrap (user profile creation, service registry sync) and
+    # then exits 81 (EXITHELPER_NORMAL_RESTART, "init done — relaunch me").
+    # Doing that here bakes an initialized profile template into the image
+    # at /opt/lo-profile; convert.py copies it per run, so the runtime
+    # skips the init-and-relaunch and every conversion is a single launch.
+    # Must run chrooted in /rootfs (the builder has no LibreOffice), which
+    # works because busybox is still present at this point. Exit 81 is
+    # success here; --terminate_after_init asks it to stop after bootstrap.
+    # LD_LIBRARY_PATH: in the bare chroot the loader can't resolve
+    # soffice.bin's sibling libs (libuno_sal & co.) the way it does in the
+    # finished image, so point it at the program dir explicitly.
+    && (chroot /rootfs /usr/bin/env HOME=/tmp \
+        LD_LIBRARY_PATH=/usr/lib/libreoffice/program \
+        /usr/lib/libreoffice/program/soffice.bin --headless \
+        -env:UserInstallation=file:///opt/lo-profile \
+        --terminate_after_init \
+        || [ "$?" -eq 81 ]) \
+    # soffice creates the profile 0700 root-owned; the runtime user is
+    # nonroot and only needs to read it (convert.py copies it per run).
+    && chmod -R a+rX /rootfs/opt/lo-profile \
     && apk del --root /rootfs --no-cache busybox \
     && mkdir -p /rootfs/tmp /rootfs/in /rootfs/out \
     && chmod 1777 /rootfs/tmp

@@ -4,6 +4,7 @@
 Drives LibreOffice headless to produce a PDF, then pdftoppm to
 rasterize each page.
 """
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,10 +26,17 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         # UserInstallation gives LibreOffice a writable profile dir so
         # headless runs work regardless of the container user/HOME.
+        # Start from the pre-warmed template the build stage baked in,
+        # so soffice skips its first-run init (and its exit-81 relaunch).
+        profile = Path(tmp) / "profile"
+        template = Path("/opt/lo-profile")
+        if template.is_dir():
+            shutil.copytree(template, profile)
+
         cmd = [
             SOFFICE,
             "--headless",
-            f"-env:UserInstallation=file://{tmp}/profile",
+            f"-env:UserInstallation=file://{profile}",
             "--convert-to", "pdf",
             "--outdir", tmp,
             str(src),
