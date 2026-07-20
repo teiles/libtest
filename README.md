@@ -52,10 +52,14 @@ repo, listed for the next change):
   launch chain — `soffice` (sh) → `oosplash` (ELF) → `soffice.bin`.
 - **Exit code 81**: `EXITHELPER_NORMAL_RESTART` — benign. soffice.bin
   exits 81 after initializing its user profile and expects a relaunch,
-  which oosplash normally performs. Because each run gets a fresh
-  throwaway `UserInstallation` profile (what makes concurrent runs
-  safe), this happens on *every* run here, not just the first;
-  `convert.py` relaunches once and only the second exit code counts.
+  which oosplash normally performs. This no longer occurs in practice:
+  the build stage pre-runs that bootstrap (chrooted into `/rootfs`) and
+  bakes the initialized profile into the image at `/opt/lo-profile`, and
+  `convert.py` copies it into a fresh throwaway profile per run (what
+  makes concurrent runs safe) — so every conversion is a single soffice
+  launch. `convert.py` still handles 81 with one relaunch purely as a
+  fallback, e.g. if a LibreOffice upgrade invalidates the relocated
+  profile template.
 - **No shell for anything else either**: runtime work must be direct
   binary execs — no `shell=True`, no shell-script entrypoints, and
   `docker exec` debugging won't work. Debug in the builder stage
